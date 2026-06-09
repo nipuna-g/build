@@ -1,8 +1,41 @@
+import { useEffect } from 'react';
 import type { Session, Superset, WarmupRow } from '../types';
 
 interface Props {
   session: Session;
   onBack: () => void;
+}
+
+function useScreenWakeLock() {
+  useEffect(() => {
+    let sentinel: WakeLockSentinel | null = null;
+    let cancelled = false;
+
+    const acquire = async () => {
+      try {
+        if (!('wakeLock' in navigator)) return;
+        sentinel = await navigator.wakeLock.request('screen');
+      } catch {
+        /* permission denied or feature unsupported — ignore */
+      }
+    };
+
+    void acquire();
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && !cancelled && !sentinel) {
+        void acquire();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+      sentinel?.release().catch(() => {});
+      sentinel = null;
+    };
+  }, []);
 }
 
 function SetTable({ sets }: { sets: Array<{ set: string | null; weight: string | null; rep: string | null; rir: string | null; remark: string | null }> }) {
@@ -86,6 +119,8 @@ function SupersetSection({ superset }: { superset: Superset }) {
 }
 
 export default function SessionDetail({ session, onBack }: Props) {
+  useScreenWakeLock();
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <button
