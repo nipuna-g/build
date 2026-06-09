@@ -215,9 +215,16 @@ function parseSession(
       continue;
     }
 
+    const cell = {
+      sheetName: blockName,
+      row: r,
+      rirCol: cols.rir,
+      remarkCol: cols.remarkScan[0] ?? cols.remark,
+    };
+
     if (a) {
       const [slot, name, detail] = splitExerciseCell(a);
-      const setRow: SetRow = { set: setLabel, weight, rep, rir, remark };
+      const setRow: SetRow = { set: setLabel, weight, rep, rir, remark, cell };
       if (slot === null) {
         warmups.push({ exercise: name, ...setRow });
         currentEx = null;
@@ -242,7 +249,7 @@ function parseSession(
       if (currentEx.coach_remark === null && coachRemark) {
         currentEx.coach_remark = coachRemark;
       }
-      currentEx.sets.push({ set: setLabel, weight, rep, rir, remark });
+      currentEx.sets.push({ set: setLabel, weight, rep, rir, remark, cell });
     }
     r++;
   }

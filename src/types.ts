@@ -1,9 +1,17 @@
+export interface CellRef {
+  sheetName: string;
+  row: number;
+  rirCol: number;
+  remarkCol: number;
+}
+
 export interface SetRow {
   set: string | null;
   weight: string | null;
   rep: string | null;
   rir: string | null;
   remark: string | null;
+  cell?: CellRef;
 }
 
 export interface WarmupRow extends SetRow {

@@ -34,6 +34,54 @@ export async function fetchSheetMetadata(
   }));
 }
 
+export class SheetWriteAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SheetWriteAuthError';
+  }
+}
+
+function colToA1(col: number): string {
+  let n = col + 1;
+  let s = '';
+  while (n > 0) {
+    const r = (n - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+export async function updateCell(opts: {
+  spreadsheetId: string;
+  accessToken: string;
+  sheetName: string;
+  row: number;
+  col: number;
+  value: string;
+}): Promise<void> {
+  const { spreadsheetId, accessToken, sheetName, row, col, value } = opts;
+  const a1 = `'${sheetName.replace(/'/g, "''")}'!${colToA1(col)}${row + 1}`;
+  const url = `${API_BASE}/${spreadsheetId}/values/${encodeURIComponent(
+    a1,
+  )}?valueInputOption=USER_ENTERED`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ values: [[value]] }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    if (res.status === 401 || res.status === 403) {
+      throw new SheetWriteAuthError(`Auth expired (${res.status}). Sign in again.`);
+    }
+    throw new Error(`Update failed (${res.status}): ${body}`);
+  }
+}
+
 export async function fetchSheetsValues(
   spreadsheetId: string,
   sheetNames: string[],
