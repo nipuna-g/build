@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Session } from './types';
+import type { Session, SetRow } from './types';
 import SheetConnect from './components/SheetConnect';
 import SessionList from './components/SessionList';
 import SessionDetail from './components/SessionDetail';
@@ -7,6 +7,7 @@ import ExerciseList from './components/ExerciseList';
 import ExerciseDetail from './components/ExerciseDetail';
 import type { Tab } from './components/TabBar';
 import { clearSource } from './source';
+import { applyPatchToSessions, type SetLocator } from './edit';
 
 type View =
   | { kind: 'connect' }
@@ -59,6 +60,18 @@ export default function App() {
     }
     clearSource();
     setView({ kind: 'connect' });
+  };
+
+  const updateSet = (
+    sessionIndex: number,
+    locator: SetLocator,
+    patch: Partial<SetRow>,
+  ) => {
+    setView((prev) => {
+      if (prev.kind === 'connect') return prev;
+      const sessions = applyPatchToSessions(prev.sessions, sessionIndex, locator, patch);
+      return { ...prev, sessions };
+    });
   };
 
   if (view.kind === 'connect') {
@@ -117,6 +130,8 @@ export default function App() {
           ? setView({ kind: 'exercise', sessions: view.sessions, name: view.exerciseName })
           : setView({ kind: 'list', sessions: view.sessions, tab: view.tab })
       }
+      onUpdateSet={updateSet}
+      onReauth={signOut}
     />
   );
 }

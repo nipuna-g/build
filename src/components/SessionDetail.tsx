@@ -1,14 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { Session, SetRow, Superset, WarmupRow } from '../types';
 import DurationTimer, { parseDurationSeconds } from './DurationTimer';
+import EditableText from './EditableText';
 import { findLastTime } from '../lastTime';
 import { setKey, useCompletion, warmupKey, type CompletionMap } from '../completion';
+import { commitEdit, type EditField, type SetLocator } from '../edit';
+
+export type { SetLocator } from '../edit';
 
 interface Props {
   session: Session;
   sessions: Session[];
   sessionIndex: number;
   onBack: () => void;
+  onUpdateSet: (
+    sessionIndex: number,
+    locator: SetLocator,
+    patch: Partial<SetRow>,
+  ) => void;
+  onReauth: () => void;
 }
 
 function CheckCell({ done, onToggle }: { done: boolean; onToggle: () => void }) {
@@ -68,14 +78,20 @@ function SetTable({
   sets,
   slot,
   sessionIndex,
+  supersetIndex,
+  exerciseIndex,
   completion,
   toggle,
+  onEdit,
 }: {
   sets: SetRow[];
   slot: string;
   sessionIndex: number;
+  supersetIndex: number;
+  exerciseIndex: number;
   completion: CompletionMap;
   toggle: (key: string) => void;
+  onEdit: (locator: SetLocator, field: EditField, prev: string | null, next: string) => void;
 }) {
   if (sets.length === 0) return null;
   return (
@@ -95,6 +111,13 @@ function SetTable({
           const duration = parseDurationSeconds(set.rep);
           const key = setKey(sessionIndex, slot, i);
           const done = !!completion[key];
+          const locator: SetLocator = {
+            kind: 'superset',
+            supersetIndex,
+            exerciseIndex,
+            setIndex: i,
+          };
+          const editable = !!set.cell;
           return (
             <tr
               key={i}
@@ -114,8 +137,28 @@ function SetTable({
                   (set.rep ?? '—')
                 )}
               </td>
-              <td className="py-1.5 text-zinc-400">{set.rir ?? '—'}</td>
-              <td className="py-1.5 text-zinc-500 text-xs">{set.remark ?? ''}</td>
+              <td className="py-1.5 text-zinc-400">
+                <EditableText
+                  value={set.rir}
+                  placeholder="—"
+                  onCommit={(v) => onEdit(locator, 'rir', set.rir, v)}
+                  inputMode="numeric"
+                  disabled={!editable}
+                  displayClass="text-left"
+                  inputClass="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-zinc-200 focus:outline-none focus:border-violet-500"
+                />
+              </td>
+              <td className="py-1.5 text-zinc-500 text-xs">
+                <EditableText
+                  value={set.remark}
+                  placeholder="+ note"
+                  onCommit={(v) => onEdit(locator, 'remark', set.remark, v)}
+                  inputMode="text"
+                  disabled={!editable}
+                  displayClass="text-left w-full block"
+                  inputClass="w-full bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-zinc-200 focus:outline-none focus:border-violet-500"
+                />
+              </td>
             </tr>
           );
         })}
@@ -129,11 +172,13 @@ function WarmupSection({
   sessionIndex,
   completion,
   toggle,
+  onEdit,
 }: {
   warmups: WarmupRow[];
   sessionIndex: number;
   completion: CompletionMap;
   toggle: (key: string) => void;
+  onEdit: (locator: SetLocator, field: EditField, prev: string | null, next: string) => void;
 }) {
   if (warmups.length === 0) return null;
   return (
@@ -144,6 +189,8 @@ function WarmupSection({
           const duration = parseDurationSeconds(w.rep);
           const key = warmupKey(sessionIndex, i);
           const done = !!completion[key];
+          const locator: SetLocator = { kind: 'warmup', warmupIndex: i };
+          const editable = !!w.cell;
           return (
             <div
               key={i}
@@ -168,6 +215,31 @@ function WarmupSection({
                     {w.weight && <span>· {w.weight}</span>}
                   </div>
                 )}
+                <div className="mt-1 flex items-center gap-3 text-xs text-zinc-500">
+                  <span>
+                    RIR{' '}
+                    <EditableText
+                      value={w.rir}
+                      placeholder="—"
+                      onCommit={(v) => onEdit(locator, 'rir', w.rir, v)}
+                      inputMode="numeric"
+                      disabled={!editable}
+                      displayClass="text-left inline-block min-w-[1ch]"
+                      inputClass="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-zinc-200 focus:outline-none focus:border-violet-500"
+                    />
+                  </span>
+                  <span className="flex-1">
+                    <EditableText
+                      value={w.remark}
+                      placeholder="+ note"
+                      onCommit={(v) => onEdit(locator, 'remark', w.remark, v)}
+                      inputMode="text"
+                      disabled={!editable}
+                      displayClass="text-left w-full block"
+                      inputClass="w-full bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-zinc-200 focus:outline-none focus:border-violet-500"
+                    />
+                  </span>
+                </div>
               </div>
             </div>
           );
@@ -194,16 +266,20 @@ function formatLastTime(
 
 function SupersetSection({
   superset,
+  supersetIndex,
   sessions,
   sessionIndex,
   completion,
   toggle,
+  onEdit,
 }: {
   superset: Superset;
+  supersetIndex: number;
   sessions: Session[];
   sessionIndex: number;
   completion: CompletionMap;
   toggle: (key: string) => void;
+  onEdit: (locator: SetLocator, field: EditField, prev: string | null, next: string) => void;
 }) {
   return (
     <div className="mb-6">
@@ -238,8 +314,11 @@ function SupersetSection({
                 sets={ex.sets}
                 slot={ex.slot}
                 sessionIndex={sessionIndex}
+                supersetIndex={supersetIndex}
+                exerciseIndex={i}
                 completion={completion}
                 toggle={toggle}
+                onEdit={onEdit}
               />
             </div>
           );
@@ -249,9 +328,44 @@ function SupersetSection({
   );
 }
 
-export default function SessionDetail({ session, sessions, sessionIndex, onBack }: Props) {
+export default function SessionDetail({
+  session,
+  sessions,
+  sessionIndex,
+  onBack,
+  onUpdateSet,
+  onReauth,
+}: Props) {
   useScreenWakeLock();
   const { map: completion, toggle } = useCompletion();
+  const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState(false);
+
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 4500);
+    return () => clearTimeout(t);
+  }, [error]);
+
+  const handleEdit = async (
+    locator: SetLocator,
+    field: EditField,
+    prev: string | null,
+    next: string,
+  ) => {
+    const result = await commitEdit({
+      session,
+      locator,
+      field,
+      prev,
+      next,
+      applyOptimistic: (patch) => onUpdateSet(sessionIndex, locator, patch),
+    });
+    if (!result.ok) {
+      setError(result.message);
+      setAuthError(result.reason === 'auth');
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -264,6 +378,27 @@ export default function SessionDetail({ session, sessions, sessionIndex, onBack 
         </svg>
         Back to sessions
       </button>
+
+      {error && (
+        <div className="mb-4 flex items-start justify-between gap-3 bg-red-900/30 border border-red-800 text-red-200 text-sm px-4 py-3 rounded-lg">
+          <span>{error}</span>
+          {authError ? (
+            <button
+              onClick={onReauth}
+              className="shrink-0 text-red-100 underline hover:text-white"
+            >
+              Sign in
+            </button>
+          ) : (
+            <button
+              onClick={() => setError(null)}
+              className="shrink-0 text-red-200/70 hover:text-white"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="mb-8">
         <div className="text-zinc-500 text-sm mb-1">{session.block}</div>
@@ -287,16 +422,19 @@ export default function SessionDetail({ session, sessions, sessionIndex, onBack 
         sessionIndex={sessionIndex}
         completion={completion}
         toggle={toggle}
+        onEdit={handleEdit}
       />
 
       {session.supersets.map((ss, i) => (
         <SupersetSection
           key={i}
           superset={ss}
+          supersetIndex={i}
           sessions={sessions}
           sessionIndex={sessionIndex}
           completion={completion}
           toggle={toggle}
+          onEdit={handleEdit}
         />
       ))}
     </div>
