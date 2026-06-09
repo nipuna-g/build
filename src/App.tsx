@@ -6,6 +6,7 @@ import SessionDetail from './components/SessionDetail';
 import ExerciseList from './components/ExerciseList';
 import ExerciseDetail from './components/ExerciseDetail';
 import type { Tab } from './components/TabBar';
+import { clearSource } from './source';
 
 type View =
   | { kind: 'connect' }
@@ -56,6 +57,7 @@ export default function App() {
     } catch {
       /* ignore */
     }
+    clearSource();
     setView({ kind: 'connect' });
   };
 

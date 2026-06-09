@@ -3,6 +3,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { extractSpreadsheetId, fetchSheetMetadata, fetchSheetsValues } from '../google';
 import { parseAll } from '../parser';
 import { openSpreadsheetPicker } from '../picker';
+import { saveSource } from '../source';
 import type { Session } from '../types';
 
 interface Props {
@@ -22,7 +23,8 @@ export default function SheetConnect({ onLoad }: Props) {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
 
-  async function loadFromId(id: string, accessToken: string) {
+  async function loadFromId(id: string, token: { access_token: string; expires_in?: number }) {
+    const accessToken = token.access_token;
     setStage('Fetching sheet metadata…');
     const meta = await fetchSheetMetadata(id, accessToken);
     const blockSheets = meta
@@ -44,12 +46,17 @@ export default function SheetConnect({ onLoad }: Props) {
     if (sessions.length === 0) {
       throw new Error('No sessions found after parsing. Check the sheet format.');
     }
+    saveSource({
+      spreadsheetId: id,
+      accessToken,
+      expiresAt: Date.now() + (token.expires_in ?? 3600) * 1000,
+    });
     onLoad(sessions);
   }
 
   const login = useGoogleLogin({
     scope:
-      'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly',
     onSuccess: async (token) => {
       try {
         setError(null);
@@ -76,7 +83,7 @@ export default function SheetConnect({ onLoad }: Props) {
           if (!id) throw new Error('Could not extract spreadsheet ID from URL');
         }
 
-        await loadFromId(id, token.access_token);
+        await loadFromId(id, token);
       } catch (e) {
         setError((e as Error).message);
       } finally {
