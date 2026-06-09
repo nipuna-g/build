@@ -1,11 +1,30 @@
 import type { Session } from '../types';
 import { aggregateByExercise } from '../aggregate';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 interface Props {
   sessions: Session[];
   exerciseName: string;
   onBack: () => void;
   onSelectSession: (index: number) => void;
+}
+
+function formatShortDate(iso: string | null, raw: string | null): string {
+  if (iso) {
+    const d = new Date(iso);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+  }
+  return raw ?? '';
 }
 
 export default function ExerciseDetail({ sessions, exerciseName, onBack, onSelectSession }: Props) {
@@ -36,6 +55,56 @@ export default function ExerciseDetail({ sessions, exerciseName, onBack, onSelec
               </span>
             )}
           </div>
+
+          {(() => {
+            const chartData = ex.entries
+              .filter((e) => e.maxWeight !== null)
+              .map((e) => ({
+                date: formatShortDate(e.date_iso, e.date_raw),
+                weight: e.maxWeight as number,
+                sortKey: e.date_iso ?? '',
+              }))
+              .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+            if (chartData.length < 2) return null;
+            return (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-4">
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      stroke="#71717a"
+                      tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke="#71717a"
+                      tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                      tickLine={false}
+                      width={40}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: '#18181b',
+                        border: '1px solid #3f3f46',
+                        borderRadius: 8,
+                        color: '#fafafa',
+                      }}
+                      labelStyle={{ color: '#a1a1aa' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="weight"
+                      stroke="#a78bfa"
+                      strokeWidth={2}
+                      dot={{ fill: '#a78bfa', r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            );
+          })()}
 
           <ul className="bg-zinc-900 border border-zinc-800 rounded-xl divide-y divide-zinc-800 overflow-hidden">
             {ex.entries.map((e, i) => {
