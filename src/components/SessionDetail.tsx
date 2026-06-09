@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { Session, Superset, WarmupRow } from '../types';
+import DurationTimer, { parseDurationSeconds } from './DurationTimer';
 
 interface Props {
   session: Session;
@@ -52,15 +53,24 @@ function SetTable({ sets }: { sets: Array<{ set: string | null; weight: string |
         </tr>
       </thead>
       <tbody>
-        {sets.map((set, i) => (
-          <tr key={i} className="border-t border-zinc-800">
-            <td className="py-1.5 text-zinc-400">{set.set ?? '—'}</td>
-            <td className="py-1.5 text-white font-medium">{set.weight ?? '—'}</td>
-            <td className="py-1.5 text-white">{set.rep ?? '—'}</td>
-            <td className="py-1.5 text-zinc-400">{set.rir ?? '—'}</td>
-            <td className="py-1.5 text-zinc-500 text-xs">{set.remark ?? ''}</td>
-          </tr>
-        ))}
+        {sets.map((set, i) => {
+          const duration = parseDurationSeconds(set.rep);
+          return (
+            <tr key={i} className="border-t border-zinc-800">
+              <td className="py-1.5 text-zinc-400">{set.set ?? '—'}</td>
+              <td className="py-1.5 text-white font-medium">{set.weight ?? '—'}</td>
+              <td className="py-1.5 text-white">
+                {duration !== null && set.rep ? (
+                  <DurationTimer seconds={duration} label={set.rep} />
+                ) : (
+                  (set.rep ?? '—')
+                )}
+              </td>
+              <td className="py-1.5 text-zinc-400">{set.rir ?? '—'}</td>
+              <td className="py-1.5 text-zinc-500 text-xs">{set.remark ?? ''}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
@@ -72,16 +82,24 @@ function WarmupSection({ warmups }: { warmups: WarmupRow[] }) {
     <div className="mb-6">
       <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-3">Warm Up</h3>
       <div className="flex flex-col gap-2">
-        {warmups.map((w, i) => (
-          <div key={i} className="bg-zinc-800/50 rounded-lg px-4 py-3">
-            <div className="text-zinc-300 font-medium">{w.exercise}</div>
-            {(w.rep || w.weight) && (
-              <div className="text-sm text-zinc-500 mt-0.5">
-                {[w.rep, w.weight].filter(Boolean).join(' · ')}
-              </div>
-            )}
-          </div>
-        ))}
+        {warmups.map((w, i) => {
+          const duration = parseDurationSeconds(w.rep);
+          return (
+            <div key={i} className="bg-zinc-800/50 rounded-lg px-4 py-3">
+              <div className="text-zinc-300 font-medium">{w.exercise}</div>
+              {(w.rep || w.weight) && (
+                <div className="text-sm text-zinc-500 mt-0.5 flex items-center gap-2">
+                  {duration !== null && w.rep ? (
+                    <DurationTimer seconds={duration} label={w.rep} />
+                  ) : (
+                    w.rep && <span>{w.rep}</span>
+                  )}
+                  {w.weight && <span>· {w.weight}</span>}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
