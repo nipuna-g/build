@@ -38,7 +38,7 @@ const ABBREV: Record<string, string> = {
   trx: 'trx',
 };
 
-function normalizeKey(name: string): string {
+export function normalizeKey(name: string): string {
   let s = name.toLowerCase().trim();
   s = s.replace(/&/g, ' and ');
   s = s.replace(/[+\-,./()"']/g, ' ');

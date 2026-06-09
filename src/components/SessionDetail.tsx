@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
 import type { Session, Superset, WarmupRow } from '../types';
 import DurationTimer, { parseDurationSeconds } from './DurationTimer';
+import { findLastTime } from '../lastTime';
 
 interface Props {
   session: Session;
+  sessions: Session[];
+  sessionIndex: number;
   onBack: () => void;
 }
 
@@ -105,38 +108,69 @@ function WarmupSection({ warmups }: { warmups: WarmupRow[] }) {
   );
 }
 
-function SupersetSection({ superset }: { superset: Superset }) {
+function formatLastTime(
+  last: ReturnType<typeof findLastTime>,
+): string | null {
+  if (!last) return null;
+  const { topSet, setCount } = last;
+  const parts: string[] = [];
+  if (topSet.weight) parts.push(topSet.weight);
+  if (topSet.rep) parts.push(`× ${topSet.rep}`);
+  if (topSet.rir) parts.push(`@ RIR ${topSet.rir}`);
+  const body = parts.length > 0 ? parts.join(' ') : '—';
+  const when = last.date_iso ?? last.date_raw ?? '';
+  const setsTag = setCount > 1 ? ` (top of ${setCount} sets)` : '';
+  return when ? `Last: ${body}${setsTag} · ${when}` : `Last: ${body}${setsTag}`;
+}
+
+function SupersetSection({
+  superset,
+  sessions,
+  sessionIndex,
+}: {
+  superset: Superset;
+  sessions: Session[];
+  sessionIndex: number;
+}) {
   return (
     <div className="mb-6">
       <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-3">
         Superset {superset.group}
       </h3>
       <div className="flex flex-col gap-4">
-        {superset.exercises.map((ex, i) => (
-          <div key={i} className="bg-zinc-800 border border-zinc-700 rounded-xl px-5 py-4">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <span className="inline-block text-xs font-bold text-violet-400 bg-violet-400/10 px-2 py-0.5 rounded mr-2">
-                  {ex.slot}
-                </span>
-                <span className="text-white font-semibold">{ex.name}</span>
-                {ex.detail && (
-                  <span className="ml-2 text-zinc-400 text-sm">({ex.detail})</span>
-                )}
+        {superset.exercises.map((ex, i) => {
+          const lastLine = ex.name
+            ? formatLastTime(findLastTime(sessions, sessionIndex, ex.name))
+            : null;
+          return (
+            <div key={i} className="bg-zinc-800 border border-zinc-700 rounded-xl px-5 py-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="inline-block text-xs font-bold text-violet-400 bg-violet-400/10 px-2 py-0.5 rounded mr-2">
+                    {ex.slot}
+                  </span>
+                  <span className="text-white font-semibold">{ex.name}</span>
+                  {ex.detail && (
+                    <span className="ml-2 text-zinc-400 text-sm">({ex.detail})</span>
+                  )}
+                </div>
               </div>
+              {lastLine && (
+                <p className="mt-1 text-xs text-zinc-500 tabular-nums">{lastLine}</p>
+              )}
+              {ex.coach_remark && (
+                <p className="mt-2 text-sm text-amber-400/80 italic">"{ex.coach_remark}"</p>
+              )}
+              <SetTable sets={ex.sets} />
             </div>
-            {ex.coach_remark && (
-              <p className="mt-2 text-sm text-amber-400/80 italic">"{ex.coach_remark}"</p>
-            )}
-            <SetTable sets={ex.sets} />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-export default function SessionDetail({ session, onBack }: Props) {
+export default function SessionDetail({ session, sessions, sessionIndex, onBack }: Props) {
   useScreenWakeLock();
 
   return (
@@ -171,7 +205,12 @@ export default function SessionDetail({ session, onBack }: Props) {
       <WarmupSection warmups={session.warmups} />
 
       {session.supersets.map((ss, i) => (
-        <SupersetSection key={i} superset={ss} />
+        <SupersetSection
+          key={i}
+          superset={ss}
+          sessions={sessions}
+          sessionIndex={sessionIndex}
+        />
       ))}
     </div>
   );

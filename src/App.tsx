@@ -108,6 +108,8 @@ export default function App() {
   return (
     <SessionDetail
       session={view.sessions[view.index]}
+      sessions={view.sessions}
+      sessionIndex={view.index}
       onBack={() =>
         view.exerciseName
           ? setView({ kind: 'exercise', sessions: view.sessions, name: view.exerciseName })
