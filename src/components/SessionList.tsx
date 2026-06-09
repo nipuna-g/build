@@ -1,8 +1,10 @@
 import type { Session } from '../types';
+import TabBar, { type Tab } from './TabBar';
 
 interface Props {
   sessions: Session[];
   onSelect: (index: number) => void;
+  onTabChange: (tab: Tab) => void;
 }
 
 function groupByBlock(sessions: Session[]): Map<string, { session: Session; index: number }[]> {
@@ -15,12 +17,13 @@ function groupByBlock(sessions: Session[]): Map<string, { session: Session; inde
   return map;
 }
 
-export default function SessionList({ sessions, onSelect }: Props) {
+export default function SessionList({ sessions, onSelect, onTabChange }: Props) {
   const groups = groupByBlock(sessions);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-white mb-8">BUILD Sessions</h1>
+      <h1 className="text-3xl font-bold text-white mb-6">BUILD Tracker</h1>
+      <TabBar active="sessions" onChange={onTabChange} />
 
       {Array.from(groups.entries()).map(([block, items]) => (
         <div key={block} className="mb-8">
