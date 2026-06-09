@@ -5,6 +5,7 @@ interface Props {
   sessions: Session[];
   onSelect: (index: number) => void;
   onTabChange: (tab: Tab) => void;
+  onReload: () => void;
 }
 
 function groupByBlock(sessions: Session[]): Map<string, { session: Session; index: number }[]> {
@@ -17,12 +18,21 @@ function groupByBlock(sessions: Session[]): Map<string, { session: Session; inde
   return map;
 }
 
-export default function SessionList({ sessions, onSelect, onTabChange }: Props) {
+export default function SessionList({ sessions, onSelect, onTabChange, onReload }: Props) {
   const groups = groupByBlock(sessions);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-white mb-6">BUILD Tracker</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-white">BUILD Tracker</h1>
+        <button
+          onClick={onReload}
+          className="text-zinc-400 hover:text-white text-sm"
+          title="Reload sheet"
+        >
+          Reload
+        </button>
+      </div>
       <TabBar active="sessions" onChange={onTabChange} />
 
       {Array.from(groups.entries()).map(([block, items]) => (

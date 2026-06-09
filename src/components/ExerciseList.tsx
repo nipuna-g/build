@@ -6,14 +6,24 @@ interface Props {
   sessions: Session[];
   onTabChange: (tab: Tab) => void;
   onSelectExercise: (name: string) => void;
+  onReload: () => void;
 }
 
-export default function ExerciseList({ sessions, onTabChange, onSelectExercise }: Props) {
+export default function ExerciseList({ sessions, onTabChange, onSelectExercise, onReload }: Props) {
   const exercises = aggregateByExercise(sessions);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-white mb-6">BUILD Tracker</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-white">BUILD Tracker</h1>
+        <button
+          onClick={onReload}
+          className="text-zinc-400 hover:text-white text-sm"
+          title="Reload sheet"
+        >
+          Reload
+        </button>
+      </div>
       <TabBar active="exercises" onChange={onTabChange} />
 
       {exercises.length === 0 && (
